@@ -1,0 +1,58 @@
+plugins {
+    id "java"
+    id "com.gradleup.shadow" version "9.3.2"
+}
+
+group = "com.bobcat00"
+version = "2.01-SNAPSHOT"
+description = "Add PlotSquared plot markers to BlueMap"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+dependencies {
+    compileOnly "io.papermc.paper:paper-api:26.1.2.build.52-beta"
+    compileOnly "com.intellectualsites.plotsquared:plotsquared-core:7.5.12"
+    compileOnly "com.sk89q.worldedit:worldedit-core:7.4.0"
+    compileOnly "de.bluecolored:bluemap-api:2.7.8"
+
+    implementation "com.technicjelle:BMUtils:5.0.1"
+    implementation "org.bstats:bstats-bukkit:3.1.0"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release.set(25)
+}
+
+tasks.named("processResources") {
+    def props = [version: project.version]
+    inputs.properties(props)
+    filteringCharset = "UTF-8"
+    filesMatching("plugin.yml") {
+        expand(props)
+    }
+}
+
+tasks.named("jar") {
+    archiveClassifier.set("thin")
+    manifest {
+        attributes("paperweight-mappings-namespace": "mojang")
+    }
+}
+
+tasks.named("shadowJar") {
+    archiveClassifier.set("")
+    relocate "com.technicjelle", "com.bobcat00.plotmarkers.technicjelle"
+    relocate "org.bstats", "com.bobcat00.plotmarkers.bstats"
+    manifest {
+        attributes("paperweight-mappings-namespace": "mojang")
+    }
+}
+
+tasks.named("build") {
+    dependsOn(tasks.named("shadowJar"))
+}

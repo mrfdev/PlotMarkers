@@ -20,6 +20,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -33,6 +35,8 @@ import de.bluecolored.bluemap.api.markers.MarkerSet;
 
 public final class Listeners implements Listener
 {
+    private static final long STARTUP_DELAY_TICKS = 40L;
+    
     private PlotMarkers  plugin;
     private BlueMapAPI   bmAPI;
     private PoiMarkers   poiMarkers;
@@ -48,82 +52,120 @@ public final class Listeners implements Listener
 
         BlueMapAPI.onEnable(api ->
         {
-            // Ensure we're on the main thread
-            Bukkit.getScheduler().runTask(plugin, new Runnable()
+            Bukkit.getScheduler().runTaskLater(plugin, () -> setupMarkers(api), STARTUP_DELAY_TICKS);
+        });
+    }
+    
+    // -------------------------------------------------------------------------
+    
+    private void setupMarkers(BlueMapAPI api)
+    {
+        // BlueMap Worlds -> Maps -> MarkerSets - > Markers
+        bmAPI = api;
+        ConcurrentHashMap<String, MarkerSet> poiMarkerSets = new ConcurrentHashMap<String, MarkerSet>();
+        ConcurrentHashMap<String, MarkerSet> shapeMarkerSets = new ConcurrentHashMap<String, MarkerSet>();
+        
+        plugin.config.reloadConfig();
+        plugin.config.updatePlotWorlds();
+        
+        // Get list of worlds from config file
+        Set<String> worldNames = plugin.config.getWorlds();
+        if (worldNames.isEmpty())
+        {
+            plugin.getLogger().warning("No PlotSquared worlds are configured for PlotMarkers yet.");
+            plugin.getLogger().warning("Create or load a PlotSquared world, then restart the server so PlotMarkers can generate world settings.");
+        }
+        
+        // Create BlueMap marker sets for each world in our config
+        for (String worldName : worldNames)
+        {
+            // Get all the maps defined for this world
+            Collection<BlueMapMap> maps = getMaps(api, worldName);
+            if (!maps.isEmpty())
             {
-                @Override
-                public void run()
+                // Markersets which will be used for all maps in this world
+                MarkerSet poiMarkerSet = MarkerSet.builder()
+                                               .label("Plots")
+                                               .toggleable(true)
+                                               .defaultHidden(false)
+                                               .sorting(0)
+                                               .build();
+                
+                MarkerSet shapeMarkerSet = MarkerSet.builder()
+                                               .label("Shapes")
+                                               .toggleable(true)
+                                               .defaultHidden(false)
+                                               .sorting(1)
+                                               .build();
+
+                // Save for our use
+                poiMarkerSets.put(worldName, poiMarkerSet);
+                shapeMarkerSets.put(worldName, shapeMarkerSet);
+                
+                // Save in each map defined for this world
+                for (BlueMapMap map : maps)
                 {
-                    // BlueMap Worlds -> Maps -> MarkerSets - > Markers
-                    bmAPI = api;
-                    ConcurrentHashMap<String, MarkerSet> poiMarkerSets = new ConcurrentHashMap<String, MarkerSet>();
-                    ConcurrentHashMap<String, MarkerSet> shapeMarkerSets = new ConcurrentHashMap<String, MarkerSet>();
+                    map.getMarkerSets().put("poimarkers", poiMarkerSet);
+                    map.getMarkerSets().put("shapemarkers", shapeMarkerSet);
                     
-                    plugin.config.reloadConfig();
-                    
-                    // Get list of worlds from config file
-                    Set<String> worldNames = plugin.config.getWorlds();
-                    
-                    // Create BlueMap marker sets for each world in our config
-                    for (String worldName : worldNames)
+                    // Copy icon to asset storage
+                    String icon = plugin.config.getCustomIcon(worldName);
+                    if (!icon.isEmpty())
                     {
-                        // Get all the maps defined for this world
-                        BlueMapWorld world = api.getWorld(worldName).orElse(null);
-                        if (world != null)
+                        try
                         {
-                            // Markersets which will be used for all maps in this world
-                            MarkerSet poiMarkerSet = MarkerSet.builder()
-                                                           .label("Plots")
-                                                           .toggleable(true)
-                                                           .defaultHidden(false)
-                                                           .sorting(0)
-                                                           .build();
-                            
-                            MarkerSet shapeMarkerSet = MarkerSet.builder()
-                                                           .label("Shapes")
-                                                           .toggleable(true)
-                                                           .defaultHidden(false)
-                                                           .sorting(1)
-                                                           .build();
-     
-                            // Save for our use
-                            poiMarkerSets.put(worldName, poiMarkerSet);
-                            shapeMarkerSets.put(worldName, shapeMarkerSet);
-                            
-                            // Save in each map defined for this world
-                            for (BlueMapMap map : world.getMaps())
-                            {
-                                map.getMarkerSets().put("poimarkers", poiMarkerSet);
-                                map.getMarkerSets().put("shapemarkers", shapeMarkerSet);
-                                
-                                // Copy icon to asset storage
-                                String icon = plugin.config.getCustomIcon(worldName);
-                                if (!icon.isEmpty())
-                                {
-                                    try
-                                    {
-                                        copyIcon(map, icon);
-                                    }
-                                    catch (IOException e)
-                                    {
-                                        plugin.getLogger().warning("IOException copying " + icon + " to " + map.getId() + " asset storage: " + e.getMessage());
-                                    }
-                                }
-                            }
+                            copyIcon(map, icon);
                         }
-                        else
+                        catch (IOException e)
                         {
-                            plugin.getLogger().warning("No BlueMap definition for world " + worldName + ".");
-                            plugin.getLogger().warning("You defined a world for PlotMarkers but there is no corresponding world in BlueMap.");
+                            plugin.getLogger().warning("IOException copying " + icon + " to " + map.getId() + " asset storage: " + e.getMessage());
                         }
                     }
-                    
-                    poiMarkers = new PoiMarkers(plugin, bmAPI, poiMarkerSets);
-                    shapeMarkers = new ShapeMarkers(plugin, bmAPI, shapeMarkerSets);
-
                 }
-            });
-        });
+            }
+            else
+            {
+                plugin.getLogger().warning("No BlueMap definition for world " + worldName + ".");
+                plugin.getLogger().warning("You defined a world for PlotMarkers but there is no corresponding world in BlueMap.");
+                plugin.getLogger().warning("Known BlueMap map ids: " + api.getMaps().stream().map(BlueMapMap::getId).sorted().toList());
+            }
+        }
+        
+        poiMarkers = new PoiMarkers(plugin, bmAPI, poiMarkerSets);
+        shapeMarkers = new ShapeMarkers(plugin, bmAPI, shapeMarkerSets);
+    }
+    
+    // -------------------------------------------------------------------------
+    
+    private Collection<BlueMapMap> getMaps(BlueMapAPI api, String worldName)
+    {
+        ArrayList<BlueMapMap> maps = new ArrayList<BlueMapMap>();
+        
+        BlueMapWorld world = api.getWorld(worldName).orElse(null);
+        if (world != null)
+        {
+            maps.addAll(world.getMaps());
+        }
+        
+        // Paper 26 can store Bukkit worlds as dimensions under the primary save folder.
+        // In that layout BlueMap's world id may be the save folder, while the map id
+        // still matches the PlotSquared world name.
+        BlueMapMap map = null;
+        String configuredMapId = plugin.config.getBlueMapMapId(worldName);
+        if (!configuredMapId.isEmpty())
+        {
+            map = api.getMap(configuredMapId).orElse(null);
+        }
+        if (map == null)
+        {
+            map = api.getMap(worldName).orElse(null);
+        }
+        if (map != null && !maps.contains(map))
+        {
+            maps.add(map);
+        }
+        
+        return maps;
     }
     
     // -------------------------------------------------------------------------

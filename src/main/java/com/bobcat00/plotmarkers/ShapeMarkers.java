@@ -320,6 +320,11 @@ public final class ShapeMarkers implements Listener
         {
             return;
         }
+        MarkerSet markerSet = markerSets.get(worldName);
+        if (markerSet == null)
+        {
+            return;
+        }
         
         // Calculate y position
         
@@ -346,33 +351,38 @@ public final class ShapeMarkers implements Listener
         
         // Get owner info
         
+        String playerName = "Unowned";
+        String firstPlayed = "Unknown";
+        String lastPlayed = "Unknown";
         UUID owner = basePlot.getOwnerAbs();
-        OfflinePlayer player = Bukkit.getOfflinePlayer(owner);
-        
-        String playerName = player.getName();
-        if (playerName == null)
+        if (owner != null)
         {
-            // No player name, use UUID instead
-            playerName = owner.toString();
+            OfflinePlayer player = Bukkit.getOfflinePlayer(owner);
+            playerName = player.getName();
+            if (playerName == null)
+            {
+                // No player name, use UUID instead
+                playerName = owner.toString();
+            }
+            
+            Calendar firstPlayedDate = new GregorianCalendar();
+            firstPlayedDate.setTimeInMillis(player.getFirstPlayed());
+            SimpleDateFormat format = new SimpleDateFormat(plugin.config.getDateFormat());
+            firstPlayed = format.format(firstPlayedDate.getTime());
+    
+            Calendar lastPlayedDate = new GregorianCalendar();
+            long lastPlayedMillis = player.getLastPlayed();
+            if (lastPlayedMillis == 0)
+            {
+                // New player, use first played date as last played date
+                lastPlayedDate = firstPlayedDate;
+            }
+            else
+            {
+                lastPlayedDate.setTimeInMillis(lastPlayedMillis);
+            }
+            lastPlayed = format.format(lastPlayedDate.getTime());
         }
-        
-        Calendar firstPlayedDate = new GregorianCalendar();
-        firstPlayedDate.setTimeInMillis(player.getFirstPlayed());
-        SimpleDateFormat format = new SimpleDateFormat(plugin.config.getDateFormat());
-        String firstPlayed = format.format(firstPlayedDate.getTime());
-
-        Calendar lastPlayedDate = new GregorianCalendar();
-        long lastPlayedMillis = player.getLastPlayed();
-        if (lastPlayedMillis == 0)
-        {
-            // New player, use first played date as last played date
-            lastPlayedDate = firstPlayedDate;
-        }
-        else
-        {
-            lastPlayedDate.setTimeInMillis(lastPlayedMillis);
-        }
-        String lastPlayed = format.format(lastPlayedDate.getTime());
         
         // Get the plots for this shape
         
@@ -396,7 +406,6 @@ public final class ShapeMarkers implements Listener
                     .lineColor(new Color(plugin.config.getLineColor(worldName), plugin.config.getLineOpacity(worldName)))
                     .build();
             
-            MarkerSet markerSet = markerSets.get(worldName);
             markerSet.put("shape" + worldName + idX + idZ, marker);
         }
     }
@@ -407,8 +416,7 @@ public final class ShapeMarkers implements Listener
     
     private void removeShape(Plot plot)
     {
-        if (!worldNames.contains(plot.getWorldName()) ||
-            !bmAPI.getMap(plot.getWorldName()).isPresent())
+        if (!worldNames.contains(plot.getWorldName()))
         {
             return;
         }
@@ -418,7 +426,10 @@ public final class ShapeMarkers implements Listener
         int idZ = plotId.getY();
 
         MarkerSet markerSet = markerSets.get(worldName);
-        markerSet.remove("shape" + worldName + idX + idZ);
+        if (markerSet != null)
+        {
+            markerSet.remove("shape" + worldName + idX + idZ);
+        }
     }
     
     // -------------------------------------------------------------------------

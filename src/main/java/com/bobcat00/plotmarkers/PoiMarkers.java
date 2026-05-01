@@ -226,6 +226,11 @@ public final class PoiMarkers implements Listener
         {
             return;
         }
+        MarkerSet markerSet = markerSets.get(worldName);
+        if (markerSet == null)
+        {
+            return;
+        }
         
         // Calculate position and ID
         
@@ -252,33 +257,38 @@ public final class PoiMarkers implements Listener
         
         // Get owner info
         
+        String playerName = "Unowned";
+        String firstPlayed = "Unknown";
+        String lastPlayed = "Unknown";
         UUID owner = plot.getOwnerAbs();
-        OfflinePlayer player = Bukkit.getOfflinePlayer(owner);
-        
-        String playerName = player.getName();
-        if (playerName == null)
+        if (owner != null)
         {
-            // No player name, use UUID instead
-            playerName = owner.toString();
+            OfflinePlayer player = Bukkit.getOfflinePlayer(owner);
+            playerName = player.getName();
+            if (playerName == null)
+            {
+                // No player name, use UUID instead
+                playerName = owner.toString();
+            }
+            
+            Calendar firstPlayedDate = new GregorianCalendar();
+            firstPlayedDate.setTimeInMillis(player.getFirstPlayed());
+            SimpleDateFormat format = new SimpleDateFormat(plugin.config.getDateFormat());
+            firstPlayed = format.format(firstPlayedDate.getTime());
+    
+            Calendar lastPlayedDate = new GregorianCalendar();
+            long lastPlayedMillis = player.getLastPlayed();
+            if (lastPlayedMillis == 0)
+            {
+                // New player, use first played date as last played date
+                lastPlayedDate = firstPlayedDate;
+            }
+            else
+            {
+                lastPlayedDate.setTimeInMillis(lastPlayedMillis);
+            }
+            lastPlayed = format.format(lastPlayedDate.getTime());
         }
-        
-        Calendar firstPlayedDate = new GregorianCalendar();
-        firstPlayedDate.setTimeInMillis(player.getFirstPlayed());
-        SimpleDateFormat format = new SimpleDateFormat(plugin.config.getDateFormat());
-        String firstPlayed = format.format(firstPlayedDate.getTime());
-
-        Calendar lastPlayedDate = new GregorianCalendar();
-        long lastPlayedMillis = player.getLastPlayed();
-        if (lastPlayedMillis == 0)
-        {
-            // New player, use first played date as last played date
-            lastPlayedDate = firstPlayedDate;
-        }
-        else
-        {
-            lastPlayedDate.setTimeInMillis(lastPlayedMillis);
-        }
-        String lastPlayed = format.format(lastPlayedDate.getTime());
         
         POIMarker marker = POIMarker.builder()
                                     .position((x+0.5), y, (z+0.5))
@@ -292,21 +302,32 @@ public final class PoiMarkers implements Listener
         if (!plugin.config.getCustomIcon(worldName).isEmpty())
         {
             // Set icon to be used
+            BlueMapMap map = null;
             BlueMapWorld world = bmAPI.getWorld(worldName).orElse(null);
-            if (world != null)
+            if (world != null && !world.getMaps().isEmpty())
             {
                 // Just grab any old map in the Collection because they should all have the same icon saved
-                Collection<BlueMapMap> maps = world.getMaps();
-                if (!maps.isEmpty())
+                map = world.getMaps().iterator().next();
+            }
+            if (map == null)
+            {
+                String configuredMapId = plugin.config.getBlueMapMapId(worldName);
+                if (!configuredMapId.isEmpty())
                 {
-                    BlueMapMap map = maps.iterator().next();
-                    String iconUrl = map.getAssetStorage().getAssetUrl(plugin.config.getCustomIcon(worldName));
-                    marker.setIcon(iconUrl, plugin.config.getCustomIconAnchorX(worldName), plugin.config.getCustomIconAnchorY(worldName));
+                    map = bmAPI.getMap(configuredMapId).orElse(null);
                 }
+            }
+            if (map == null)
+            {
+                map = bmAPI.getMap(worldName).orElse(null);
+            }
+            if (map != null)
+            {
+                String iconUrl = map.getAssetStorage().getAssetUrl(plugin.config.getCustomIcon(worldName));
+                marker.setIcon(iconUrl, plugin.config.getCustomIconAnchorX(worldName), plugin.config.getCustomIconAnchorY(worldName));
             }
         }
         
-        MarkerSet markerSet = markerSets.get(worldName);
         markerSet.put(worldName + x + z, marker);
     }
     
@@ -316,8 +337,7 @@ public final class PoiMarkers implements Listener
     
     private void removeMarker(Plot plot)
     {
-        if (!worldNames.contains(plot.getWorldName()) ||
-            !bmAPI.getMap(plot.getWorldName()).isPresent())
+        if (!worldNames.contains(plot.getWorldName()))
         {
             return;
         }
@@ -328,7 +348,10 @@ public final class PoiMarkers implements Listener
         double z = (top.getZ() + bottom.getZ()) / 2.0;
         
         MarkerSet markerSet = markerSets.get(worldName);
-        markerSet.remove(worldName + x + z);
+        if (markerSet != null)
+        {
+            markerSet.remove(worldName + x + z);
+        }
     }
 
 }
