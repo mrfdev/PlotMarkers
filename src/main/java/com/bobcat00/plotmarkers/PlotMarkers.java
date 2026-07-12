@@ -18,6 +18,7 @@ package com.bobcat00.plotmarkers;
 
 import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.plotsquared.core.PlotAPI;
@@ -35,6 +36,11 @@ public final class PlotMarkers extends JavaPlugin {
         config = new Config(this);
         
         getServer().getPluginManager().registerEvents(new Listeners(this), this);
+        PluginCommand command = getCommand("plotmarkers");
+        if (command != null)
+        {
+            command.setExecutor(new PlotMarkersCommand(this));
+        }
         
         // Metrics
         

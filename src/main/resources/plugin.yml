@@ -5,3 +5,7 @@ author: Bobcat00
 api-version: '26.1.2'
 depend: [BlueMap,PlotSquared]
 softdepend: ['Multiverse-Core']
+commands:
+  plotmarkers:
+    description: Shows PlotMarkers information and documentation.
+    usage: /plotmarkers info
