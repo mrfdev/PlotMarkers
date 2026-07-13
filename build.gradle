@@ -4,17 +4,24 @@ plugins {
 }
 
 group = "com.bobcat00"
-version = "2.01-SNAPSHOT"
+version = "2.0.2"
 description = "Add PlotSquared plot markers to BlueMap"
+
+def javaTarget = 25
+def paperTarget = "26.2"
+def buildNumber = providers.exec {
+    commandLine "git", "rev-list", "--count", "HEAD"
+}.standardOutput.asText.get().trim().padLeft(3, "0")
+def artifactBaseName = "1MB-PlotMarkers-v${version}-${buildNumber}-j${javaTarget}-${paperTarget}"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+        languageVersion = JavaLanguageVersion.of(javaTarget)
     }
 }
 
 dependencies {
-    compileOnly "io.papermc.paper:paper-api:26.2.build.60-beta"
+    compileOnly "io.papermc.paper:paper-api:${paperTarget}.build.60-beta"
     compileOnly "com.intellectualsites.plotsquared:plotsquared-core:7.5.12"
     compileOnly "com.sk89q.worldedit:worldedit-core:7.4.4"
     compileOnly "de.bluecolored:bluemap-api:2.7.8"
@@ -25,7 +32,7 @@ dependencies {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
-    options.release.set(25)
+    options.release.set(javaTarget)
 }
 
 tasks.named("processResources") {
@@ -38,14 +45,14 @@ tasks.named("processResources") {
 }
 
 tasks.named("jar") {
-    archiveClassifier.set("thin")
+    archiveFileName.set("${artifactBaseName}-thin.jar")
     manifest {
         attributes("paperweight-mappings-namespace": "mojang")
     }
 }
 
 tasks.named("shadowJar") {
-    archiveClassifier.set("")
+    archiveFileName.set("${artifactBaseName}.jar")
     relocate "com.technicjelle", "com.bobcat00.plotmarkers.technicjelle"
     relocate "org.bstats", "com.bobcat00.plotmarkers.bstats"
     manifest {

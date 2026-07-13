@@ -48,8 +48,10 @@ Use the Gradle wrapper:
 The shaded plugin jar is written to:
 
 ```text
-build/libs/PlotMarkers-2.01-SNAPSHOT.jar
+build/libs/1MB-PlotMarkers-v2.0.2-<build>-j25-26.2.jar
 ```
+
+`<build>` is the zero-padded Git commit count. For example, commit count 28 produces build number `028`.
 
 Gradle also creates a thin jar with the `thin` classifier; install the unclassified shaded jar on the server.
 
@@ -57,7 +59,7 @@ Gradle also creates a thin jar with the `thin` classifier; install the unclassif
 
 1. Stop the server.
 2. Install BlueMap and PlotSquared.
-3. Put `PlotMarkers-2.01-SNAPSHOT.jar` in the server `plugins/` folder.
+3. Put `1MB-PlotMarkers-v2.0.2-<build>-j25-26.2.jar` in the server `plugins/` folder.
 4. Start the server once so PlotMarkers can detect PlotSquared plot worlds and generate `plugins/PlotMarkers/config.yml`.
 5. Configure BlueMap maps and any per-world PlotMarkers settings.
 6. Restart the server so markers are rebuilt with the final configuration.
