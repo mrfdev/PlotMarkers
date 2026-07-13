@@ -3,12 +3,12 @@
 ## Requirements
 
 - Java 25
-- Paper 26.1.2 target
+- Paper 26.2 target
 - BlueMap
 - PlotSquared
 - Optional: Multiverse-Core for world management in multi-world server setups
 
-The 26.1.2-targeted jar has also been tested on Paper 26.2.
+The plugin builds against the Paper 26.2 API and Java 25.
 
 ## Build From Source
 

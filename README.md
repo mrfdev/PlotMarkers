@@ -17,12 +17,12 @@ The plugin is based on PlotMarkers 2.x and is maintained here for Paper 26 compa
 ## Compatibility
 
 - Java: 25
-- Paper API target: 26.1.2
-- Verified test targets: Paper 26.1.2 and Paper 26.2
+- Paper API target: 26.2
+- Verified test target: Paper 26.2
 - Required plugins: BlueMap and PlotSquared
 - Soft dependency: Multiverse-Core
 
-The same 26.1.2-targeted PlotMarkers jar has been tested successfully on Paper 26.2. Do not retarget the project to 26.2 unless a real compatibility issue appears.
+PlotMarkers now builds against the Paper 26.2 API. Keep Java 25 as the runtime and compilation target.
 
 ## Documentation
 

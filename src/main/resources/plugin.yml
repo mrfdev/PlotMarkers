@@ -2,7 +2,7 @@ name: PlotMarkers
 main: com.bobcat00.plotmarkers.PlotMarkers
 version: ${version}
 author: Bobcat00
-api-version: '26.1.2'
+api-version: '26.2'
 depend: [BlueMap,PlotSquared]
 softdepend: ['Multiverse-Core']
 commands:

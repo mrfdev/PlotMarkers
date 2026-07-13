@@ -14,9 +14,9 @@ java {
 }
 
 dependencies {
-    compileOnly "io.papermc.paper:paper-api:26.1.2.build.52-beta"
+    compileOnly "io.papermc.paper:paper-api:26.2.build.60-beta"
     compileOnly "com.intellectualsites.plotsquared:plotsquared-core:7.5.12"
-    compileOnly "com.sk89q.worldedit:worldedit-core:7.4.0"
+    compileOnly "com.sk89q.worldedit:worldedit-core:7.4.4"
     compileOnly "de.bluecolored:bluemap-api:2.7.8"
 
     implementation "com.technicjelle:BMUtils:5.0.1"
