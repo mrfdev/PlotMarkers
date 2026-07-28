@@ -371,7 +371,7 @@ public final class ShapeMarkers implements Listener
             firstPlayed = format.format(firstPlayedDate.getTime());
     
             Calendar lastPlayedDate = new GregorianCalendar();
-            long lastPlayedMillis = player.getLastPlayed();
+            long lastPlayedMillis = player.getLastSeen();
             if (lastPlayedMillis == 0)
             {
                 // New player, use first played date as last played date

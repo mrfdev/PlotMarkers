@@ -27,10 +27,12 @@ public final class PlotMarkers extends JavaPlugin {
     
     Config config;
     PlotAPI psAPI;
+    private ReleaseMetadata releaseMetadata;
     
     @Override
     public void onEnable()
     {
+        releaseMetadata = ReleaseMetadata.load(this);
         psAPI = new PlotAPI();
         
         config = new Config(this);
@@ -39,7 +41,9 @@ public final class PlotMarkers extends JavaPlugin {
         PluginCommand command = getCommand("plotmarkers");
         if (command != null)
         {
-            command.setExecutor(new PlotMarkersCommand(this));
+            PlotMarkersCommand commandHandler = new PlotMarkersCommand(this);
+            command.setExecutor(commandHandler);
+            command.setTabCompleter(commandHandler);
         }
         
         // Metrics
@@ -53,5 +57,10 @@ public final class PlotMarkers extends JavaPlugin {
     @Override
     public void onDisable()
     {
+    }
+
+    public ReleaseMetadata getReleaseMetadata()
+    {
+        return releaseMetadata;
     }
 }

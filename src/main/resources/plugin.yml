@@ -1,11 +1,11 @@
 name: PlotMarkers
 main: com.bobcat00.plotmarkers.PlotMarkers
-version: ${version}
+version: ${pluginVersion}
 author: Bobcat00
-api-version: '26.2'
+api-version: '${paperTarget}'
 depend: [BlueMap,PlotSquared]
 softdepend: ['Multiverse-Core']
 commands:
   plotmarkers:
-    description: Shows PlotMarkers information and documentation.
-    usage: /plotmarkers info
+    description: Shows PlotMarkers information, status, version, and diagnostics.
+    usage: /plotmarkers [info|version|status|debug]

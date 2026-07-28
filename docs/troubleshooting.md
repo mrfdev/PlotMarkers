@@ -64,3 +64,5 @@ Restart the server. PlotMarkers does not provide a reload command.
 ## Hard Compatibility Errors
 
 If the log shows `NoSuchMethodError`, `NoClassDefFoundError`, `ClassNotFoundException`, `UnsupportedClassVersionError`, or an enable exception involving PlotMarkers, capture the full startup log and the exact Paper, BlueMap, PlotSquared, Java, and PlotMarkers versions.
+
+Run `/plotmarkers debug` to capture the generated plugin version/build, exact compiled Paper API, Java target/runtime, server version, and integration state.

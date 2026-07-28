@@ -3,12 +3,12 @@
 ## Requirements
 
 - Java 25
-- Paper 26.2 target
+- Paper 26.2 build 84 STABLE
 - BlueMap
 - PlotSquared
 - Optional: Multiverse-Core for world management in multi-world server setups
 
-The plugin builds against the Paper 26.2 API and Java 25.
+The plugin compiles against `io.papermc.paper:paper-api:26.2.build.84-stable` and targets Java 25 bytecode.
 
 ## Build From Source
 
@@ -19,10 +19,8 @@ The plugin builds against the Paper 26.2 API and Java 25.
 Install the shaded jar:
 
 ```text
-build/libs/1MB-PlotMarkers-v2.0.2-<build>-j25-26.2.jar
+build/libs/1MB-PlotMarkers-v2.0.3-030-j25-26.2.jar
 ```
-
-`<build>` is the zero-padded Git commit count. For example, commit count 28 produces build number `028`.
 
 Do not install the `thin` jar unless you are intentionally managing the shaded dependencies yourself.
 
@@ -30,7 +28,7 @@ Do not install the `thin` jar unless you are intentionally managing the shaded d
 
 1. Stop the server.
 2. Install or update BlueMap and PlotSquared.
-3. Copy `1MB-PlotMarkers-v2.0.2-<build>-j25-26.2.jar` into `plugins/`.
+3. Copy `1MB-PlotMarkers-v2.0.3-030-j25-26.2.jar` into `plugins/`.
 4. Remove older PlotMarkers jars from the top-level `plugins/` folder.
 5. Start the server.
 6. Confirm the log contains marker creation lines such as:
@@ -40,7 +38,7 @@ Do not install the `thin` jar unless you are intentionally managing the shaded d
 [PlotMarkers] Created 1 shape marker for plotsq.
 ```
 
-7. Run `/plotmarkers info` to confirm the command is registered.
+7. Run `/plotmarkers status` and `/plotmarkers debug` to confirm integrations and compiled release metadata.
 8. Open BlueMap and check the `Plots` and `Shapes` marker sets.
 
 ## Updating

@@ -12,17 +12,18 @@ The plugin is based on PlotMarkers 2.x and is maintained here for Paper 26 compa
 - Shows owner name, plot ID, first played date, and last played date in marker details.
 - Updates markers when plots are claimed, deleted, merged, unlinked, or transferred.
 - Supports per-world marker height, colors, opacity, line width, BlueMap map ID override, and custom POI icons.
-- Provides `/plotmarkers info` with a canonical documentation link.
+- Provides `/plotmarkers info`, `version`, `status`, and `debug` diagnostics generated from release metadata.
 
 ## Compatibility
 
 - Java: 25
 - Paper API target: 26.2
-- Verified test target: Paper 26.2
+- Compiled Paper API: `io.papermc.paper:paper-api:26.2.build.84-stable`
+- Release: `2.0.3` build `030`
 - Required plugins: BlueMap and PlotSquared
 - Soft dependency: Multiverse-Core
 
-PlotMarkers now builds against the Paper 26.2 API. Keep Java 25 as the runtime and compilation target.
+PlotMarkers builds against stable Paper 26.2 while retaining Java 25 bytecode compatibility.
 
 ## Documentation
 
@@ -48,10 +49,10 @@ Use the Gradle wrapper:
 The shaded plugin jar is written to:
 
 ```text
-build/libs/1MB-PlotMarkers-v2.0.2-<build>-j25-26.2.jar
+build/libs/1MB-PlotMarkers-v2.0.3-030-j25-26.2.jar
 ```
 
-`<build>` is the zero-padded Git commit count. For example, commit count 28 produces build number `028`.
+Release version, build number, Java target, Paper target, API build, channel, and artifact naming are defined in `gradle.properties`. The `check` task fails when generated metadata or documentation drifts from those values.
 
 Gradle also creates a thin jar with the `thin` classifier; install the unclassified shaded jar on the server.
 
@@ -59,7 +60,7 @@ Gradle also creates a thin jar with the `thin` classifier; install the unclassif
 
 1. Stop the server.
 2. Install BlueMap and PlotSquared.
-3. Put `1MB-PlotMarkers-v2.0.2-<build>-j25-26.2.jar` in the server `plugins/` folder.
+3. Put `1MB-PlotMarkers-v2.0.3-030-j25-26.2.jar` in the server `plugins/` folder.
 4. Start the server once so PlotMarkers can detect PlotSquared plot worlds and generate `plugins/PlotMarkers/config.yml`.
 5. Configure BlueMap maps and any per-world PlotMarkers settings.
 6. Restart the server so markers are rebuilt with the final configuration.

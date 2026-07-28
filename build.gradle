@@ -4,24 +4,53 @@ plugins {
 }
 
 group = "com.bobcat00"
-version = "2.0.2"
 description = "Add PlotSquared plot markers to BlueMap"
 
-def javaTarget = 25
-def paperTarget = "26.2"
-def buildNumber = providers.exec {
-    commandLine "git", "rev-list", "--count", "HEAD"
-}.standardOutput.asText.get().trim().padLeft(3, "0")
-def artifactBaseName = "1MB-PlotMarkers-v${version}-${buildNumber}-j${javaTarget}-${paperTarget}"
+def requiredProperty = { String name ->
+    String value = providers.gradleProperty(name).orNull
+    if (value == null || value.isBlank()) {
+        throw new GradleException("Missing required release property: ${name}")
+    }
+    value
+}
+
+def pluginVersion = requiredProperty("pluginVersion")
+def releaseBuild = requiredProperty("releaseBuild")
+def artifactPrefix = requiredProperty("artifactPrefix")
+def pluginId = requiredProperty("pluginId")
+def javaTargetVersion = requiredProperty("javaTarget").toInteger()
+def paperTargetVersion = requiredProperty("paperTarget")
+def paperApiBuild = requiredProperty("paperApiBuild")
+def paperChannel = requiredProperty("paperChannel").toLowerCase(java.util.Locale.ROOT)
+
+if (!(pluginVersion ==~ /\d+\.\d+\.\d+/)) {
+    throw new GradleException("pluginVersion must use semantic x.y.z form: ${pluginVersion}")
+}
+if (!(releaseBuild ==~ /\d{3,}/)) {
+    throw new GradleException("releaseBuild must be a zero-padded number: ${releaseBuild}")
+}
+if (javaTargetVersion != 25) {
+    throw new GradleException("PlotMarkers releases must target Java 25, got ${javaTargetVersion}")
+}
+if (paperTargetVersion != "26.2" || paperChannel != "stable") {
+    throw new GradleException("PlotMarkers releases must target stable Paper 26.2")
+}
+
+version = pluginVersion
+
+def paperApiVersion = "${paperTargetVersion}.build.${paperApiBuild}-${paperChannel}"
+def artifactBaseName = "${artifactPrefix}-${pluginId}-v${pluginVersion}-${releaseBuild}-j${javaTargetVersion}-${paperTargetVersion}"
+def artifactFileName = "${artifactBaseName}.jar"
+def thinArtifactFileName = "${artifactBaseName}-thin.jar"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(javaTarget)
+        languageVersion = JavaLanguageVersion.of(javaTargetVersion)
     }
 }
 
 dependencies {
-    compileOnly "io.papermc.paper:paper-api:${paperTarget}.build.60-beta"
+    compileOnly "io.papermc.paper:paper-api:${paperApiVersion}"
     compileOnly "com.intellectualsites.plotsquared:plotsquared-core:7.5.12"
     compileOnly "com.sk89q.worldedit:worldedit-core:7.4.4"
     compileOnly "de.bluecolored:bluemap-api:2.7.8"
@@ -32,27 +61,36 @@ dependencies {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
-    options.release.set(javaTarget)
+    options.release.set(javaTargetVersion)
+    options.compilerArgs.addAll(["-Xlint:deprecation", "-Werror"])
 }
 
 tasks.named("processResources") {
-    def props = [version: project.version]
+    def props = [
+        pluginVersion: pluginVersion,
+        releaseBuild: releaseBuild,
+        javaTarget: javaTargetVersion,
+        paperTarget: paperTargetVersion,
+        paperApiVersion: paperApiVersion,
+        paperChannel: paperChannel.toUpperCase(java.util.Locale.ROOT),
+        artifactFileName: artifactFileName
+    ]
     inputs.properties(props)
     filteringCharset = "UTF-8"
-    filesMatching("plugin.yml") {
+    filesMatching(["plugin.yml", "plotmarkers-release.properties"]) {
         expand(props)
     }
 }
 
 tasks.named("jar") {
-    archiveFileName.set("${artifactBaseName}-thin.jar")
+    archiveFileName.set(thinArtifactFileName)
     manifest {
         attributes("paperweight-mappings-namespace": "mojang")
     }
 }
 
 tasks.named("shadowJar") {
-    archiveFileName.set("${artifactBaseName}.jar")
+    archiveFileName.set(artifactFileName)
     relocate "com.technicjelle", "com.bobcat00.plotmarkers.technicjelle"
     relocate "org.bstats", "com.bobcat00.plotmarkers.bstats"
     manifest {
@@ -62,4 +100,128 @@ tasks.named("shadowJar") {
 
 tasks.named("build") {
     dependsOn(tasks.named("shadowJar"))
+}
+
+tasks.register("verifyReleaseMetadata") {
+    group = "verification"
+    description = "Verifies generated plugin metadata and documentation against gradle.properties."
+    dependsOn(tasks.named("processResources"))
+    inputs.files(
+        "gradle.properties",
+        "README.md",
+        "docs/installation.md",
+        "docs/plugin-docs.yml",
+        "src/main/resources/plugin.yml",
+        "src/main/resources/plotmarkers-release.properties"
+    )
+
+    doLast {
+        def requireContains = { File file, String expected ->
+            if (!file.text.contains(expected)) {
+                throw new GradleException("${file} is missing release metadata: ${expected}")
+            }
+        }
+
+        File generatedPluginYaml = layout.buildDirectory.file("resources/main/plugin.yml").get().asFile
+        requireContains(generatedPluginYaml, "version: ${pluginVersion}")
+        requireContains(generatedPluginYaml, "api-version: '${paperTargetVersion}'")
+
+        Properties generatedRelease = new Properties()
+        layout.buildDirectory.file("resources/main/plotmarkers-release.properties").get().asFile.withInputStream {
+            generatedRelease.load(it)
+        }
+        def expectedProperties = [
+            "plugin.version": pluginVersion,
+            "release.build": releaseBuild,
+            "java.target": javaTargetVersion.toString(),
+            "paper.target": paperTargetVersion,
+            "paper.api": paperApiVersion,
+            "paper.channel": paperChannel.toUpperCase(java.util.Locale.ROOT),
+            "artifact.filename": artifactFileName
+        ]
+        expectedProperties.each { key, expected ->
+            if (generatedRelease.getProperty(key) != expected) {
+                throw new GradleException("Generated ${key} drifted: expected ${expected}, got ${generatedRelease.getProperty(key)}")
+            }
+        }
+
+        requireContains(file("README.md"), artifactFileName)
+        requireContains(file("README.md"), "io.papermc.paper:paper-api:${paperApiVersion}")
+        requireContains(file("docs/installation.md"), artifactFileName)
+        requireContains(file("docs/installation.md"), "Paper ${paperTargetVersion} build ${paperApiBuild} STABLE")
+        requireContains(file("docs/plugin-docs.yml"), "java_target: ${javaTargetVersion}")
+        requireContains(file("docs/plugin-docs.yml"), "paper_target: ${paperTargetVersion}")
+
+        def trackedReleaseText = files(
+            file("README.md"),
+            fileTree("docs") {
+                include("**/*.md")
+                include("**/*.yml")
+            },
+            fileTree("src/main/resources") {
+                include("**/*.yml")
+                include("**/*.properties")
+            }
+        )
+        ["2.01-SNAPSHOT", "2.0.2", "26.2.build.60-beta"].each { staleValue ->
+            trackedReleaseText.each { candidate ->
+                if (candidate.text.contains(staleValue)) {
+                    throw new GradleException("${candidate} still contains stale release value ${staleValue}")
+                }
+            }
+        }
+    }
+}
+
+tasks.register("verifyBytecodeTarget") {
+    group = "verification"
+    description = "Verifies that PlotMarkers class files target Java 25."
+    dependsOn(tasks.named("classes"))
+
+    doLast {
+        File classFile = layout.buildDirectory.file("classes/java/main/com/bobcat00/plotmarkers/PlotMarkers.class").get().asFile
+        DataInputStream input = new DataInputStream(new FileInputStream(classFile))
+        try {
+            if (Integer.toUnsignedLong(input.readInt()) != 0xCAFEBABEL) {
+                throw new GradleException("Invalid class file: ${classFile}")
+            }
+            input.readUnsignedShort()
+            int majorVersion = input.readUnsignedShort()
+            int expectedMajorVersion = javaTargetVersion + 44
+            if (majorVersion != expectedMajorVersion) {
+                throw new GradleException("Expected Java ${javaTargetVersion} class major ${expectedMajorVersion}, got ${majorVersion}")
+            }
+        } finally {
+            input.close()
+        }
+    }
+}
+
+tasks.register("verifyReleaseArtifact") {
+    group = "verification"
+    description = "Verifies the expected release jars were produced."
+    dependsOn(tasks.named("shadowJar"), tasks.named("jar"))
+
+    doLast {
+        [artifactFileName, thinArtifactFileName].each { fileName ->
+            File artifact = layout.buildDirectory.file("libs/${fileName}").get().asFile
+            if (!artifact.isFile()) {
+                throw new GradleException("Missing expected artifact: ${artifact}")
+            }
+        }
+    }
+}
+
+tasks.register("docsCheck") {
+    group = "verification"
+    description = "Checks local documentation for release metadata drift."
+    dependsOn(tasks.named("verifyReleaseMetadata"))
+}
+
+tasks.named("check") {
+    dependsOn(
+        tasks.named("verifyReleaseMetadata"),
+        tasks.named("verifyBytecodeTarget"),
+        tasks.named("verifyReleaseArtifact")
+    )
 }

@@ -33,6 +33,9 @@ Clicking a marker can show the plot owner, plot ID, and player date information.
 | Command | Description |
 | --- | --- |
 | `/plotmarkers info` | Shows what PlotMarkers does, the installed version, and a clickable documentation link. |
+| `/plotmarkers version` | Shows the installed release and build number. |
+| `/plotmarkers status` | Shows whether the map integrations are enabled. |
+| `/plotmarkers debug` | Shows technical release and runtime details useful for support. |
 
 ## Permissions or Rank Requirements
 
