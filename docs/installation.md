@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Java 25
+- Java 25 or Java 26 (live); build with JDK 25.0.4.1
 - Paper 26.2 build 84 STABLE
 - BlueMap
 - PlotSquared
@@ -13,22 +13,26 @@ The plugin compiles against `io.papermc.paper:paper-api:26.2.build.84-stable` an
 ## Build From Source
 
 ```bash
-./gradlew build
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.0.4.1.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
+./gradlew --no-daemon clean build docsCheck
 ```
 
 Install the shaded jar:
 
 ```text
-build/libs/1MB-PlotMarkers-v2.0.3-030-j25-26.2.jar
+build/libs/1MB-PlotMarkers-v2.0.3-031-j25-26.2.jar
 ```
 
 Do not install the `thin` jar unless you are intentionally managing the shaded dependencies yourself.
+
+The equivalent macOS helper is `./scripts/rebuild.sh`. Java compilation stays at `--release 25`. See [build and runtime verification](testing.md) for local Paper 26.2 tests on JDK 25.0.4.1 and JDK 26.0.2.1.
 
 ## Server Install
 
 1. Stop the server.
 2. Install or update BlueMap and PlotSquared.
-3. Copy `1MB-PlotMarkers-v2.0.3-030-j25-26.2.jar` into `plugins/`.
+3. Copy `1MB-PlotMarkers-v2.0.3-031-j25-26.2.jar` into `plugins/`.
 4. Remove older PlotMarkers jars from the top-level `plugins/` folder.
 5. Start the server.
 6. Confirm the log contains marker creation lines such as:
