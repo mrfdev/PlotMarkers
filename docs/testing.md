@@ -1,13 +1,16 @@
 # Build and runtime verification
 
-## Toolchain
+## Toolchain and release
 
-- Build with JDK 25.0.4.1 at `/Library/Java/JavaVirtualMachines/jdk-25.0.4.1.jdk/Contents/Home`.
-- Verify server compatibility with that JDK and JDK 26.0.2.1 at `/Library/Java/JavaVirtualMachines/jdk-26.0.2.1.jdk/Contents/Home`. Live uses Java 26.
-- Keep the Gradle Java toolchain and `--release` at 25 (class major version 69).
-- Keep `paperTarget=26.2`, `paperApiBuild=84`, and `paperChannel=stable`.
+Build with JDK 25.0.4.1 at `/Library/Java/JavaVirtualMachines/jdk-25.0.4.1.jdk/Contents/Home`.
+Keep the Gradle toolchain and `--release` at 25 (class major 69). Run the maintained
+Paper 26.3 test instance with `/Library/Java/JavaVirtualMachines/jdk-27.jdk/Contents/Home`.
+The scripts select both `JAVA_HOME` and `PATH`; automatic toolchain downloads stay disabled.
 
-The scripts set both `JAVA_HOME` and `PATH`. Gradle also discovers the compiler from `JAVA_HOME`; automatic JDK downloads are disabled. The Gradle wrapper remains at 9.4.1.
+Release properties in `gradle.properties` reserve version 2.0.4 and build 032.
+Increment each once for this release; reuse 032 after failed or repeated checks.
+The exact API is `io.papermc.paper:paper-api:26.3.build.41-alpha`. The ALPHA channel
+is deliberate. Never fall back to Paper 26.2 when a 26.3 build or test fails.
 
 ## Full rebuild
 
@@ -15,25 +18,56 @@ The scripts set both `JAVA_HOME` and `PATH`. Gradle also discovers the compiler 
 ./scripts/rebuild.sh
 ```
 
-This runs `./gradlew --no-daemon clean build docsCheck` on JDK 25.0.4.1, including the complete `check` lifecycle, release metadata, bytecode target, artifact checks, and documentation checks. The repository currently has no unit-test sources, so Gradle reports `test NO-SOURCE`; runtime smoke tests supply the integration coverage.
+This runs `./gradlew --no-daemon clean build docsCheck` with the complete `check`
+lifecycle. Verification covers generated metadata, documentation and launcher
+drift, both JAR descriptors, the mappings namespace, and every packaged class.
+Plugin classes must target Java 25; bundled library classes may target older Java
+versions but must not require newer or preview bytecode. The repository has no
+unit-test sources, so `test NO-SOURCE` is expected and is not a unit-test pass.
 
-Release properties live in `gradle.properties`. Increment the zero-padded `releaseBuild` once for a new release build. Repeated checks of that build use the same number. A toolchain refresh alone keeps the semantic plugin version and Java/Paper targets.
+The shaded JAR is the deployment artifact. The thin JAR is also built and checked,
+but requires externally supplied BMUtils and bStats and is never installed alongside
+the shaded JAR.
 
 ## Local Paper smoke tests
 
-Use a copy of the configured local test server under the ignored `servers/` directory. Preserve its original world data and dated test logs. The launcher deliberately uses `Paper-26.2.jar`, the existing build 84 fixture; it does not select a newer numbered server jar automatically.
+Keep `servers/Paper-26.2/` and `servers/jdk-refresh-031/` intact as rollback material.
+The independent clone is `servers/Paper-26.3/`. All server data, downloads, artifacts,
+and raw evidence stay under ignored `servers/`.
 
-Install the newly built shaded jar as the only PlotMarkers jar in the copy's `plugins/` directory. Keep BlueMap, PlotSquared, and their dependencies configured with a populated plot world. Bind the test server and BlueMap web server to loopback with free local ports.
+The new instance uses session `plotmarkers-paper-26-3-032` and loopback ports 28763
+(TCP game), 28764 (UDP query, disabled), 28765 (TCP RCON, disabled), and 28766
+(TCP BlueMap). Check availability before each run. DiscordSRV is inactive. Keep
+Paper's duplication, unsafe portal, tripwire, and oversized-component protections
+at their safe defaults.
+
+The copied `1MB-minecraft.sh` selects Paper 26.3 and Java 27. PaperScript uses ALPHA
+for both `default_channel` and `check_latest_channel_only`; copied 26.2 state,
+cache, download, and launcher records were archived outside the active instance.
+Stage only the reviewed exact build:
 
 ```bash
-./scripts/start-test-server.sh 25 servers/jdk-refresh-031/runtime
-# After a clean stop:
-./scripts/start-test-server.sh 26 servers/jdk-refresh-031/runtime
+cd servers/Paper-26.3
+./paperscript.sh --yes --no-metadata-cache download --version 26.3 --build 41 --channel ALPHA
+./paperscript.sh verify
 ```
 
-After Paper reports startup completion and BlueMap finishes loading, run these console commands:
+Install the shaded build as the only PlotMarkers JAR, then start from the repo root:
+
+```bash
+./scripts/start-test-server.sh
+```
+
+This selects Java 27 and checks the pinned server JAR's SHA-256 before startup.
+It does not invoke the shared server. After Paper readiness and marker creation,
+run these console commands:
 
 ```text
+version
+plugins
+version BlueMap
+version PlotSquared
+version WorldEdit
 version PlotMarkers
 plotmarkers
 plotmarkers info
@@ -48,57 +82,22 @@ bluemap reload
 stop
 ```
 
-After `bluemap reload`, wait for reload completion and both marker-creation messages, then check the HTTP marker data again before issuing `stop`.
+Wait for both marker-creation messages and reload completion before `stop`.
+Verify diagnostics against release properties, enabled integrations, usage
+responses, the `builders` world generator, and the HTTP marker data at
+`http://127.0.0.1:28766/maps/builders/live/markers.json`. This populated fixture
+must produce 361 POIs and 114 shapes, unchanged by reload. Require clean plugin
+disable, saved worlds, exit 0, and no linkage/class-version or scheduled-task errors.
 
-Verify the release version/build and filename, Java target/runtime, exact Paper API, enabled integrations, and usage responses. Confirm nonzero POI and shape marker creation and inspect the saved BlueMap marker JSON. Require plugin disable messages, saved worlds, and a normal process exit. Review warnings and reject plugin enable failures, linkage/class-version errors, scheduled-task exceptions, or shutdown failures.
+For the thin JAR, use the retained test-only `PlotMarkersTestLibraries` fixture
+from `servers/jdk-refresh-031/thin-libraries/`. It supplies BMUtils 5.0.1 and
+bStats Bukkit/Base 3.1.0. Only that test process uses
+`JAVA_TOOL_OPTIONS=-Dbstats.relocatecheck=false`, because the fixture intentionally
+provides unrelocated dependencies. Restore the shaded JAR and remove the fixture
+afterward. Normal shaded operation keeps bStats relocation checking enabled.
 
-Inspect both jars for generated metadata and Java 25 bytecode. The shaded jar is the normal server deployment artifact.
-
-### Thin jar fixture
-
-The thin jar omits BMUtils and bStats. For its runtime checks, the local test-only `PlotMarkersTestLibraries` plugin supplies BMUtils 5.0.1, bStats Bukkit 3.1.0, and bStats Base 3.1.0. It loads before PlotMarkers and declares BlueMap and PlotSquared as soft dependencies. The original thin jar is installed without modification.
-
-bStats normally requires relocation when bundled. This fixture supplies the libraries under their original packages, so its JVM uses `-Dbstats.relocatecheck=false`, the switch supported by the installed bStats 3.1.0 library. This setting applies only to the thin-jar test process. The normal shaded release contains relocated libraries and passes with the default relocation check enabled.
-
-## Official references
-
-- [Paper documentation index](https://docs.papermc.io/llms.txt)
-- [Paper runtime requirements](https://docs.papermc.io/paper/getting-started/)
-- [Paper project setup](https://docs.papermc.io/paper/dev/project-setup/)
-- [Paper 26.2 JavaPlugin lifecycle](https://jd.papermc.io/paper/26.2/org/bukkit/plugin/java/JavaPlugin.html)
-
-## Verification record: 2.0.3 build 031
-
-Verified on 2026-09-15 (Europe/Amsterdam) using Paper `26.2-84-main@26e81c4`, implementing API `26.2.build.84-stable`. The fixture used BlueMap 5.22, PlotSquared 7.6.0 Premium, Multiverse-Core 5.8.0, and the existing supporting plugin stack.
-
-| Oracle HotSpot runtime (macOS aarch64) | Shaded jar | Thin jar with the fixture above |
-| --- | --- | --- |
-| `25.0.4.1+1-LTS-5` | PASS | PASS |
-| `26.0.2.1+1-7` | PASS | PASS |
-
-- Full Gradle rebuild and all configured verification tasks: PASS on JDK 25.0.4.1. Unit tests: `NO-SOURCE`. Shell syntax and unsupported-runtime argument checks: PASS.
-- Both jars contain the correct build 031 release metadata. All seven plugin classes use Java 25 class major 69 without preview bytecode. All 93 classes in the shaded jar use class major 69 or lower.
-- All four server runs passed startup, plugin loading, diagnostics and invalid-argument responses, world-generator checks, HTTP marker data, BlueMap reload, and clean shutdown with process exit 0.
-- Each run created 361 POI markers and 114 shape markers. Marker JSON content was identical across both JDKs and both artifacts and remained identical after reload.
-- The proposed commit was rebuilt separately with the pre-existing unrelated edits excluded. Its two jars are byte-for-byte identical to the working-tree build.
-- Historical build 030 smoke logs and original world data were preserved. The local launcher now selects JDK 26.0.2.1 through `JAVA_HOME` and `PATH`.
-
-Warnings were limited to the existing OSHI macOS-version detection, FastAsyncWorldEdit update notices, plugin-induced saves, BlueMap custom-dimension fallback, and WorldGuardExtraFlags deprecated-event registration. The successful runs contained no error-level messages, linkage/class-version failures, PlotMarkers enable failures, or shutdown failures.
-
-The initial harness trials exposed incorrect BlueMap command/log assumptions and missing thin-fixture library setup. Those checks were corrected and rerun; the four successful records are listed below.
-
-### Artifact SHA-256
-
-- `1MB-PlotMarkers-v2.0.3-031-j25-26.2-thin.jar` (42253 bytes): `e10352ee5738037dddf535d8dece95394245ca15f73d2ff8dc3df8f5fd6b0fad`
-- `1MB-PlotMarkers-v2.0.3-031-j25-26.2.jar` (123810 bytes): `b44310fad52ce192309a2cfc8f99330e53c837de95af307c1d14688ac9e78073`
-
-### Local evidence
-
-The ignored `servers/jdk-refresh-031/` directory retains `source-build.log`, `toolchains.log`, the test fixture, and the smoke runner. Each successful run has `console.log`, `paper.log`, marker JSON, and `summary.json`:
-
-- `smoke-jdk25.0.4.1-1789424695697839000`
-- `smoke-jdk26.0.2.1-1789424729850751000`
-- `smoke-thin-jdk25.0.4.1-1789424990094911000`
-- `smoke-thin-jdk26.0.2.1-1789425017626838000`
-
-Canonical marker JSON SHA-256: `0f826e5f571dc4417b7032bc6617fa1ff2a5ff9209cab906e2fe6724c1109e4a`.
+The ignored `servers/upgrade-032/smoke.py` automates the diagnostics, HTTP checks,
+reload and shutdown for `shaded` or `thin`, after installing the selected JAR.
+See [the release record](releases/2.0.4-paper-26.3.md) for exact results and remaining
+manual gameplay checks. The [build 031 record](releases/2.0.3-build-031-tests.md)
+contains the historical Paper 26.2 procedure and evidence.

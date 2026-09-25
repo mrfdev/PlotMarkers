@@ -32,8 +32,8 @@ if (!(releaseBuild ==~ /\d{3,}/)) {
 if (javaTargetVersion != 25) {
     throw new GradleException("PlotMarkers releases must target Java 25, got ${javaTargetVersion}")
 }
-if (paperTargetVersion != "26.2" || paperChannel != "stable") {
-    throw new GradleException("PlotMarkers releases must target stable Paper 26.2")
+if (paperTargetVersion != "26.3" || paperChannel != "alpha") {
+    throw new GradleException("PlotMarkers releases must target Paper 26.3 ALPHA")
 }
 
 version = pluginVersion
@@ -109,6 +109,8 @@ tasks.register("verifyReleaseMetadata") {
     inputs.files(
         "gradle.properties",
         "README.md",
+        "AGENTS.md",
+        "scripts/start-test-server.sh",
         "docs/installation.md",
         "docs/plugin-docs.yml",
         "src/main/resources/plugin.yml",
@@ -148,7 +150,9 @@ tasks.register("verifyReleaseMetadata") {
         requireContains(file("README.md"), artifactFileName)
         requireContains(file("README.md"), "io.papermc.paper:paper-api:${paperApiVersion}")
         requireContains(file("docs/installation.md"), artifactFileName)
-        requireContains(file("docs/installation.md"), "Paper ${paperTargetVersion} build ${paperApiBuild} STABLE")
+        requireContains(file("docs/installation.md"), "Paper ${paperTargetVersion} build ${paperApiBuild} ${paperChannel.toUpperCase(java.util.Locale.ROOT)}")
+        requireContains(file("AGENTS.md"), "Paper ${paperTargetVersion} build ${paperApiBuild} ${paperChannel.toUpperCase(java.util.Locale.ROOT)}")
+        requireContains(file("scripts/start-test-server.sh"), "Paper-${paperTargetVersion}-${paperApiBuild}.jar")
         requireContains(file("docs/plugin-docs.yml"), "java_target: ${javaTargetVersion}")
         requireContains(file("docs/plugin-docs.yml"), "paper_target: ${paperTargetVersion}")
 
@@ -157,6 +161,7 @@ tasks.register("verifyReleaseMetadata") {
             fileTree("docs") {
                 include("**/*.md")
                 include("**/*.yml")
+                exclude("releases/**") // Historical release records intentionally retain old values.
             },
             fileTree("src/main/resources") {
                 include("**/*.yml")
@@ -199,7 +204,7 @@ tasks.register("verifyBytecodeTarget") {
 
 tasks.register("verifyReleaseArtifact") {
     group = "verification"
-    description = "Verifies the expected release jars were produced."
+    description = "Verifies both release jars, their descriptors, and every class file."
     dependsOn(tasks.named("shadowJar"), tasks.named("jar"))
 
     doLast {
@@ -207,6 +212,43 @@ tasks.register("verifyReleaseArtifact") {
             File artifact = layout.buildDirectory.file("libs/${fileName}").get().asFile
             if (!artifact.isFile()) {
                 throw new GradleException("Missing expected artifact: ${artifact}")
+            }
+            new java.util.jar.JarFile(artifact).withCloseable { jar ->
+                String descriptor = jar.getInputStream(jar.getJarEntry("plugin.yml")).withCloseable {
+                    it.getText("UTF-8")
+                }
+                ["name: PlotMarkers", "main: com.bobcat00.plotmarkers.PlotMarkers",
+                 "version: ${pluginVersion}", "api-version: '${paperTargetVersion}'"].each { expected ->
+                    if (!descriptor.readLines().contains(expected.toString())) {
+                        throw new GradleException("${fileName}: missing descriptor value ${expected}")
+                    }
+                }
+                byte[] generatedMetadata = layout.buildDirectory.file("resources/main/plotmarkers-release.properties").get().asFile.bytes
+                byte[] packagedMetadata = jar.getInputStream(jar.getJarEntry("plotmarkers-release.properties")).withCloseable {
+                    it.readAllBytes()
+                }
+                if (!java.util.Arrays.equals(generatedMetadata, packagedMetadata)) {
+                    throw new GradleException("${fileName}: packaged release metadata drifted")
+                }
+                if (jar.manifest.mainAttributes.getValue("paperweight-mappings-namespace") != "mojang") {
+                    throw new GradleException("${fileName}: missing Mojang mappings namespace")
+                }
+                jar.entries().each { entry ->
+                    if (entry.name.endsWith(".class")) {
+                        new DataInputStream(jar.getInputStream(entry)).withCloseable { input ->
+                            if (Integer.toUnsignedLong(input.readInt()) != 0xCAFEBABEL) {
+                                throw new GradleException("${fileName}: invalid class ${entry.name}")
+                            }
+                            int minor = input.readUnsignedShort()
+                            int major = input.readUnsignedShort()
+                            boolean pluginClass = entry.name ==~ /com\/bobcat00\/plotmarkers\/[^\/]+\.class/
+                            if (minor == 65535 || major > javaTargetVersion + 44
+                                    || (pluginClass && major != javaTargetVersion + 44)) {
+                                throw new GradleException("${fileName}: incompatible bytecode ${major}.${minor} in ${entry.name}")
+                            }
+                        }
+                    }
+                }
             }
         }
     }

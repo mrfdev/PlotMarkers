@@ -17,15 +17,15 @@ The plugin is based on PlotMarkers 2.x and is maintained here for Paper 26 compa
 ## Compatibility
 
 - Build JDK: 25.0.4.1
-- Java bytecode target: 25; supported server runtimes: Java 25 and Java 26 (live)
-- Paper API target: 26.2
-- Compiled Paper API: `io.papermc.paper:paper-api:26.2.build.84-stable`
+- Java bytecode target: 25; tested server runtime: Java 27
+- Paper API target: 26.3
+- Compiled Paper API: `io.papermc.paper:paper-api:26.3.build.41-alpha`
 - PlotSquared API target: `com.intellectualsites.plotsquared:plotsquared-core:7.6.0`
-- Release: `2.0.3` build `031`
+- Release: `2.0.4` build `032`
 - Required plugins: BlueMap and PlotSquared
 - Soft dependency: Multiverse-Core
 
-PlotMarkers builds against stable Paper 26.2 while retaining Java 25 bytecode compatibility. The release has been smoke-tested with PlotSquared 7.6.0 Premium, Multiverse-Core 5.8.0, and BlueMap 5.22.
+PlotMarkers targets Paper 26.3 build 41 ALPHA while retaining Java 25 bytecode. This experimental Paper build is an explicit compatibility target; see the [verification record](docs/releases/2.0.4-paper-26.3.md) for runtime results and remaining manual checks.
 
 ## Documentation
 
@@ -53,14 +53,14 @@ export PATH="$JAVA_HOME/bin:$PATH"
 The shaded plugin jar is written to:
 
 ```text
-build/libs/1MB-PlotMarkers-v2.0.3-031-j25-26.2.jar
+build/libs/1MB-PlotMarkers-v2.0.4-032-j25-26.3.jar
 ```
 
 Release version, build number, Java target, Paper target, API build, channel, and artifact naming are defined in `gradle.properties`. The `check` task fails when generated metadata or documentation drifts from those values.
 
-`./scripts/rebuild.sh` runs this full rebuild with the pinned JDK. Increment `releaseBuild` for a new release build; keep the same number when repeating verification of that build. This JDK refresh retains version `2.0.3`, Java 25 bytecode, and the Paper 26.2 target.
+`./scripts/rebuild.sh` runs this full rebuild with the pinned JDK. Increment `releaseBuild` for a new release build; keep the same number when repeating verification of that build. The Paper upgrade reserves version `2.0.4` and build `032` once; failed or repeated checks reuse that number.
 
-See [build and runtime verification](docs/testing.md) for the Java 25.0.4.1 and Java 26.0.2.1 smoke-test procedure and results.
+See [build and runtime verification](docs/testing.md) for the Java 27 smoke-test procedure and results. The Paper 26.2 rollback snapshot is tagged `v2.0.3-paper-26.2`.
 
 Gradle also creates a thin jar with the `thin` classifier; install the unclassified shaded jar on the server.
 
@@ -68,7 +68,7 @@ Gradle also creates a thin jar with the `thin` classifier; install the unclassif
 
 1. Stop the server.
 2. Install BlueMap and PlotSquared.
-3. Put `1MB-PlotMarkers-v2.0.3-031-j25-26.2.jar` in the server `plugins/` folder.
+3. Put `1MB-PlotMarkers-v2.0.4-032-j25-26.3.jar` in the server `plugins/` folder.
 4. Start the server once so PlotMarkers can detect PlotSquared plot worlds and generate `plugins/PlotMarkers/config.yml`.
 5. Configure BlueMap maps and any per-world PlotMarkers settings.
 6. Restart the server so markers are rebuilt with the final configuration.
