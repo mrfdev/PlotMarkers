@@ -9,6 +9,7 @@
 - Optional: Multiverse-Core for world management in multi-world server setups
 
 The plugin compiles against `io.papermc.paper:paper-api:26.2.build.84-stable` and targets Java 25 bytecode.
+It compiles against `com.intellectualsites.plotsquared:plotsquared-core:7.6.0`.
 
 ## Build From Source
 
@@ -44,6 +45,14 @@ The equivalent macOS helper is `./scripts/rebuild.sh`. Java compilation stays at
 
 7. Run `/plotmarkers status` and `/plotmarkers debug` to confirm integrations and compiled release metadata.
 8. Open BlueMap and check the `Plots` and `Shapes` marker sets.
+
+For a separate plot world on Paper 26.1 or newer, place its data under the primary save folder and import its namespaced key. For example, with `level-name=spawn` and a builders world at `spawn/dimensions/minecraft/builders/`:
+
+```text
+/mv import minecraft:builders normal --generator PlotSquared
+```
+
+Restart once after the import, then confirm `/mv info minecraft:builders` reports `World Name: builders` and `Generator: PlotSquared`.
 
 ## Updating
 

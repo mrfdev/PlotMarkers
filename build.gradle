@@ -51,7 +51,7 @@ java {
 
 dependencies {
     compileOnly "io.papermc.paper:paper-api:${paperApiVersion}"
-    compileOnly "com.intellectualsites.plotsquared:plotsquared-core:7.5.12"
+    compileOnly "com.intellectualsites.plotsquared:plotsquared-core:7.6.0"
     compileOnly "com.sk89q.worldedit:worldedit-core:7.4.4"
     compileOnly "de.bluecolored:bluemap-api:2.7.8"
 

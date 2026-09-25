@@ -20,11 +20,12 @@ The plugin is based on PlotMarkers 2.x and is maintained here for Paper 26 compa
 - Java bytecode target: 25; supported server runtimes: Java 25 and Java 26 (live)
 - Paper API target: 26.2
 - Compiled Paper API: `io.papermc.paper:paper-api:26.2.build.84-stable`
+- PlotSquared API target: `com.intellectualsites.plotsquared:plotsquared-core:7.6.0`
 - Release: `2.0.3` build `031`
 - Required plugins: BlueMap and PlotSquared
 - Soft dependency: Multiverse-Core
 
-PlotMarkers builds against stable Paper 26.2 while retaining Java 25 bytecode compatibility.
+PlotMarkers builds against stable Paper 26.2 while retaining Java 25 bytecode compatibility. The release has been smoke-tested with PlotSquared 7.6.0 Premium, Multiverse-Core 5.8.0, and BlueMap 5.22.
 
 ## Documentation
 

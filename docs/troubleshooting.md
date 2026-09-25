@@ -29,13 +29,32 @@ Fixes:
 
 ## PlotSquared Says A World Was Not Properly Loaded
 
-In small test servers, this can happen when a PlotSquared world is configured but no world manager such as Multiverse-Core preloads it. PlotSquared may then load the world itself.
+This means PlotSquared has an area configuration for a world that was not loaded correctly. Do not ignore the warning if PlotMarkers creates zero markers or PlotSquared logs a scheduled-task exception.
 
-If PlotMarkers creates markers afterward, this warning is usually test-server noise. On a live server, confirm your world manager and PlotSquared world configuration are correct.
+On Paper 26.1 and newer, worlds live under `<level-name>/dimensions/<namespace>/<key>/`. Import the namespaced key into Multiverse-Core. For example:
+
+```text
+/mv import minecraft:builders normal --generator PlotSquared
+```
+
+After restarting, verify all of the following:
+
+- `/mv info minecraft:builders` reports `World Name: builders` and `Generator: PlotSquared`.
+- The log contains `Detected world load for 'builders'`.
+- The log contains a load line for `minecraft:builders`.
+- PlotMarkers creates nonzero POI and shape markers.
+- PlotSquared does not log `PLOT AREA CANNOT BE NULL` during shutdown.
 
 ## BlueMap Fallback Dimension Warning
 
-BlueMap may warn that world data does not contain information for a dimension such as `minecraft:plotsq`. If BlueMap still loads the map and PlotMarkers creates markers, this is not a PlotMarkers failure.
+BlueMap may warn that world data does not contain information for a custom dimension such as `minecraft:builders` and then use fallback dimension metadata. Configure the map with the primary save folder and namespaced dimension, for example:
+
+```hocon
+world: "spawn"
+dimension: "minecraft:builders"
+```
+
+If BlueMap loads the expected map and PlotMarkers creates nonzero markers, the fallback warning alone is not a PlotMarkers failure.
 
 ## Marker Height Is Wrong
 
